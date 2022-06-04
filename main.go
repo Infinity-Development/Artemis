@@ -9,41 +9,26 @@ import (
 )
 
 var (
-	domainShort = []string{"botlist.site", "127.0.0.1:1010"}
 	shortRoutes = make(map[string]func(r *http.Request, vars map[string]string) string)
 )
 
 const (
 	mainDomain = "https://infinitybots.gg"
-	prod       = true
 )
-
-func isShort(url string) bool {
-	for _, v := range domainShort {
-		if url == v {
-			return true
-		}
-	}
-	return false
-}
 
 func wrapRoute(router *mux.Router, f func(r *http.Request, vars map[string]string) string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !prod || isShort(r.Host) {
-			if r.URL.Query().Get("debug") == "true" {
-				w.WriteHeader(200)
-				resp := f(r, mux.Vars(r))
-				go fmt.Println(r.URL, "=>", resp)
-				w.Write([]byte("Going to redirect to " + resp))
-				return
-			}
+		if r.URL.Query().Get("debug") == "true" {
+			w.WriteHeader(200)
 			resp := f(r, mux.Vars(r))
 			go fmt.Println(r.URL, "=>", resp)
-			http.Redirect(w, r, resp, http.StatusFound)
-		} else {
-			w.WriteHeader(400)
-			w.Write([]byte("Not configured as short url"))
+			w.Write([]byte("Going to redirect to " + resp))
+			return
 		}
+		
+		resp := f(r, mux.Vars(r))
+		go fmt.Println(r.URL, "=>", resp)
+		http.Redirect(w, r, resp, http.StatusFound)
 	}
 }
 
