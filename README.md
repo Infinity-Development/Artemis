@@ -22,3 +22,9 @@ Short Link API for Infinity Bot List
 
 ---
 
+## Contributors
+<a href="https://github.com/InfinityBotList/Artemis/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=InfinityBotList/Artemis" />
+</a>
+
+
