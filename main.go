@@ -33,11 +33,14 @@ func wrapRoute(router *mux.Router, f func(r *http.Request, vars map[string]strin
 		if !prod || isShort(r.Host) {
 			if r.URL.Query().Get("debug") == "true" {
 				w.WriteHeader(200)
-				w.Write([]byte("Going to redirect to " + f(r, mux.Vars(r))))
+				resp := f(r, mux.Vars(r))
+				fmt.Println(r.URL, "=>", resp)
+				w.Write([]byte("Going to redirect to " + resp))
 				return
 			}
-
-			http.Redirect(w, r, f(r, mux.Vars(r)), http.StatusFound)
+			resp := f(r, mux.Vars(r))
+			fmt.Println(r.URL, "=>", resp)
+			http.Redirect(w, r, resp, http.StatusFound)
 		} else {
 			w.WriteHeader(400)
 			w.Write([]byte("Not configured as short url"))
