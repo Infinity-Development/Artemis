@@ -19,7 +19,6 @@ const (
 )
 
 func isShort(url string) bool {
-	fmt.Println(url)
 	for _, v := range domainShort {
 		if url == v {
 			return true
@@ -34,12 +33,12 @@ func wrapRoute(router *mux.Router, f func(r *http.Request, vars map[string]strin
 			if r.URL.Query().Get("debug") == "true" {
 				w.WriteHeader(200)
 				resp := f(r, mux.Vars(r))
-				fmt.Println(r.URL, "=>", resp)
+				go fmt.Println(r.URL, "=>", resp)
 				w.Write([]byte("Going to redirect to " + resp))
 				return
 			}
 			resp := f(r, mux.Vars(r))
-			fmt.Println(r.URL, "=>", resp)
+			go fmt.Println(r.URL, "=>", resp)
 			http.Redirect(w, r, resp, http.StatusFound)
 		} else {
 			w.WriteHeader(400)
@@ -167,7 +166,7 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(bytes)
 
-		fmt.Println(r.URL, "=>", http.StatusOK)
+		go fmt.Println(r.URL, "=>", http.StatusOK)
 	})
 
 	http.ListenAndServe(":1010", r)
