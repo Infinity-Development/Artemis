@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	domainShort = []string{"botlist.short", "127.0.0.1:1010"}
+	domainShort = []string{"botlist.site", "127.0.0.1:1010"}
 	shortRoutes = make(map[string]func(r *http.Request, vars map[string]string) string)
 )
 
