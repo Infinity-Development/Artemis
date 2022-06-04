@@ -144,13 +144,6 @@ func main() {
 	// Short API
 
 	r.HandleFunc("/api/redirects.json", func(w http.ResponseWriter, r *http.Request) {
-		q := r.URL.Query()
-
-		q.Set("id", "%ID%")
-		q.Set("path", "%PATH%")
-
-		r.URL.RawQuery = q.Encode()
-
 		var apiResp = make(map[string]string)
 
 		for k, v := range shortRoutes {
