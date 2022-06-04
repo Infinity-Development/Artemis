@@ -1,6 +1,8 @@
 # Artemis
 Short Link API for Infinity Bot List
 
+**NOTE: this is not yet in production and most likely wont be until the release of v4**
+
 --- 
 
 ## Available Endpoints
