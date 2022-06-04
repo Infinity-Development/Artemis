@@ -15,7 +15,7 @@ var (
 
 const (
 	mainDomain = "https://infinitybots.gg"
-	prod       = false
+	prod       = true
 )
 
 func isShort(url string) bool {
