@@ -166,6 +166,8 @@ func main() {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(bytes)
+
+		fmt.Println(r.URL, "=>", http.StatusOK)
 	})
 
 	http.ListenAndServe(":1010", r)
