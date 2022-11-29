@@ -2,6 +2,6 @@
 	{
 		"name": "Artemis",
 		"script": "unbuffer ./shorts",
-		"cwd": "/root/Artemis/"
+		"cwd": "/root/Artemis"
 	}
 ]
