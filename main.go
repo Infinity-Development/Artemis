@@ -1,158 +1,112 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
 
-	"github.com/gorilla/mux"
-)
-
-var (
-	shortRoutes = make(map[string]func(r *http.Request, vars map[string]string) string)
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 const (
 	mainDomain = "https://infinitybots.gg"
 )
 
-func wrapRoute(router *mux.Router, f func(r *http.Request, vars map[string]string) string) http.HandlerFunc {
+type Handler = func(r *http.Request) string
+
+func wrap(fn Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Query().Get("debug") == "true" {
-			w.WriteHeader(200)
-			resp := f(r, mux.Vars(r))
-			go fmt.Println(r.URL, "=>", resp)
-			w.Write([]byte("Going to redirect to " + resp))
-			return
-		}
-		
-		resp := f(r, mux.Vars(r))
-		go fmt.Println(r.URL, "=>", resp)
-		http.Redirect(w, r, resp, http.StatusFound)
+		var redirPath = fn(r)
+
+		http.Redirect(w, r, redirPath, http.StatusTemporaryRedirect)
 	}
 }
 
-func shortRoute(path string, r *mux.Router, f func(r *http.Request, vars map[string]string) string) {
-	shortRoutes[path] = f
-
-	r.HandleFunc(path, wrapRoute(r, f))
-}
-
 func main() {
-	r := mux.NewRouter()
+	r := chi.NewRouter()
 
-	r.NotFoundHandler = http.HandlerFunc(wrapRoute(r, func(r *http.Request, vars map[string]string) string {
+	r.Use(middleware.CleanPath)
+
+	r.NotFound(wrap(func(r *http.Request) string {
 		return mainDomain + r.URL.EscapedPath()
 	}))
 
 	// handle / route
-	shortRoute("/", r, func(r *http.Request, vars map[string]string) string {
+	r.Handle("/", wrap(func(r *http.Request) string {
 		return mainDomain
-	})
+	}))
 
 	// We redirect bots onto itself to allow for better redirects
-	shortRoute("/bot/{id}", r, func(r *http.Request, vars map[string]string) string {
-		return "https://" + r.Host + "/" + vars["id"]
-	})
+	r.Handle("/bot/{id}", wrap(func(r *http.Request) string {
+		return "https://" + r.Host + "/" + chi.URLParam(r, "id")
+	}))
 
-	shortRoute("/bot/{id}/{path}", r, func(r *http.Request, vars map[string]string) string {
-		return "https://" + r.Host + "/" + vars["id"] + "/" + vars["path"]
-	})
-
-	shortRoute("/bots/{id}", r, func(r *http.Request, vars map[string]string) string {
-		return "https://" + r.Host + "/" + vars["id"]
-	})
-
-	shortRoute("/bots/{id}/{path}", r, func(r *http.Request, vars map[string]string) string {
-		return "https://" + r.Host + "/" + vars["id"] + "/" + vars["path"]
-	})
+	r.Handle("/bot/{id}/{path}", wrap(func(r *http.Request) string {
+		return "https://" + r.Host + "/" + chi.URLParam(r, "id") + "/" + chi.URLParam(r, "path")
+	}))
 
 	// Bot redirects
-	shortRoute("/{id}", r, func(r *http.Request, vars map[string]string) string {
-		return mainDomain + "/bots/" + vars["id"]
-	})
+	r.Handle("/{id}", wrap(func(r *http.Request) string {
+		return mainDomain + "/bots/" + chi.URLParam(r, "id")
+	}))
 
-	// Invite
-	shortRoute("/{id}/i", r, func(r *http.Request, vars map[string]string) string {
-		return mainDomain + "/bots/" + vars["id"] + "/invite"
-	})
+	r.Handle("/{id}/{path}", wrap(func(r *http.Request) string {
+		path := chi.URLParam(r, "path")
 
-	shortRoute("/{id}/inv", r, func(r *http.Request, vars map[string]string) string {
-		return mainDomain + "/bots/" + vars["id"] + "/invite"
-	})
+		var redirPath string
 
-	shortRoute("/{id}/invite", r, func(r *http.Request, vars map[string]string) string {
-		return mainDomain + "/bots/" + vars["id"] + "/invite"
-	})
+		switch path {
+		case "i":
+			redirPath = "invite"
+		case "inv":
+			redirPath = "invite"
+		case "invite":
+			redirPath = "invite"
+		case "v":
+			redirPath = "vote"
+		case "vote":
+			redirPath = "vote"
+		default:
+			redirPath = path
+		}
 
-	// Vote
-	shortRoute("/{id}/v", r, func(r *http.Request, vars map[string]string) string {
-		return mainDomain + "/bots/" + vars["id"] + "/vote"
-	})
-
-	shortRoute("/{id}/vote", r, func(r *http.Request, vars map[string]string) string {
-		return mainDomain + "/bots/" + vars["id"] + "/vote"
-	})
+		return mainDomain + "/bots/" + chi.URLParam(r, "id") + "/" + redirPath
+	}))
 
 	// Packs
-	shortRoute("/p/{id}", r, func(r *http.Request, vars map[string]string) string {
-		return mainDomain + "/packs/" + vars["id"]
-	})
-
-	shortRoute("/{id}/p", r, func(r *http.Request, vars map[string]string) string {
-		return mainDomain + "/packs/" + vars["id"]
-	})
-
-	shortRoute("/{id}/packs", r, func(r *http.Request, vars map[string]string) string {
-		return mainDomain + "/packs/" + vars["id"]
-	})
+	for _, p := range []string{
+		"/pack/{id}",
+		"/packs/{id}",
+		"/p/{id}",
+		"/pack/{id}/",
+		"/packs/{id}/",
+		"/p/{id}/",
+	} {
+		r.Handle(p, wrap(func(r *http.Request) string {
+			return mainDomain + "/packs/" + chi.URLParam(r, "id")
+		}))
+	}
 
 	// User routes
-	shortRoute("/u/{id}", r, func(r *http.Request, vars map[string]string) string {
-		return mainDomain + "/users/" + vars["id"]
-	})
+	for _, p := range []string{
+		"/u/{id}",
+		"/user/{id}",
+		"/users/{id}",
+		"/profile/{id}",
+		"/profiles/{id}",
+		"/u/{id}/",
+		"/user/{id}/",
+		"/users/{id}/",
+		"/profile/{id}/",
+		"/profiles/{id}/",
+	} {
+		r.Handle(p, wrap(func(r *http.Request) string {
+			return mainDomain + "/users/" + chi.URLParam(r, "id")
+		}))
+	}
 
-	shortRoute("/user/{id}", r, func(r *http.Request, vars map[string]string) string {
-		return mainDomain + "/users/" + vars["id"]
-	})
+	err := http.ListenAndServe(":1010", r)
 
-	shortRoute("/users/{id}", r, func(r *http.Request, vars map[string]string) string {
-		return mainDomain + "/users/" + vars["id"]
-	})
-
-	shortRoute("/profile/{id}", r, func(r *http.Request, vars map[string]string) string {
-		return mainDomain + "/users/" + vars["id"]
-	})
-
-	shortRoute("/profiles/{id}", r, func(r *http.Request, vars map[string]string) string {
-		return mainDomain + "/users/" + vars["id"]
-	})
-
-	// Short API
-
-	r.HandleFunc("/api/redirects.json", func(w http.ResponseWriter, r *http.Request) {
-		var apiResp = make(map[string]string)
-
-		for k, v := range shortRoutes {
-			apiResp[k] = v(r, map[string]string{
-				"id":   "%ID%",
-				"path": "%PATH%",
-			})
-		}
-
-		bytes, err := json.Marshal(apiResp)
-
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("Error marshalling JSON"))
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(bytes)
-
-		go fmt.Println(r.URL, "=>", http.StatusOK)
-	})
-
-	http.ListenAndServe(":1010", r)
+	if err != nil {
+		panic(err)
+	}
 }
